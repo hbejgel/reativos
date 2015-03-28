@@ -1,0 +1,4 @@
+BASQUETE!!!!
+
+Pressione Mouse 1 pra bola cair, se acertar a luz fica verde, se errar vermelha!
+Ao acertar a velocidade da bola aumenta, e ao errar diminui.

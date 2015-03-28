@@ -42,6 +42,7 @@ void start_arrays(){
 }
 
 void setup() {
+  Serial.begin(9600);
   start_arrays();
   setup_timers();
   custom_init();

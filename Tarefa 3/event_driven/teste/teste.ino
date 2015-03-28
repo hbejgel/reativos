@@ -11,15 +11,17 @@ void custom_init(){
   button_listen(BUT_PIN_ACELERA);
   pinMode(LED_PIN, OUTPUT);
   spd = 200;
+  timer_set(spd);
   aceso = LOW;
 }
 
 void button_changed(int pin, int state){
-  if(pin == BUT_PIN_ACELERA)
+  Serial.println(spd);
+  if(pin == BUT_PIN_ACELERA && state == HIGH)
   {
-    spd -= state * 25;
-  } else {
-    spd += state * 25;
+    spd *= 2;
+  } else if(pin == BUT_PIN_DESACELERA && state == HIGH){
+    spd /= 2;
   }
 }
 
