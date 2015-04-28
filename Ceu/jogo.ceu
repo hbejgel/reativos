@@ -1,0 +1,126 @@
+#include "sdl.ceu"
+
+input void SDL_REDRAW;
+input void SDL_QUIT;
+input _SDL_KeyboardEvent*    SDL_KEYDOWN;
+input _SDL_MouseButtonEvent* SDL_MOUSEBUTTONDOWN;
+
+var _SDL_Window&? win;
+	finalize
+        win = _SDL_CreateWindow("Basquete", _SDL_WINDOWPOS_CENTERED,
+                                         _SDL_WINDOWPOS_CENTERED,
+                                         640, 480,
+                                         _SDL_WINDOW_SHOWN);
+    with
+        _SDL_DestroyWindow(&win);
+	end
+
+// Retangulo que representa o background
+var int w, h;
+_SDL_GetWindowSize(&win, &w, &h);
+
+var _SDL_Rect bg;
+    bg.w = w;
+    bg.h = h;
+    bg.x = 0;
+    bg.y = 0;
+
+
+// Inicializando Renderer
+var _SDL_Renderer&? ren;
+    finalize
+        ren = _SDL_CreateRenderer(&win, -1, 0);
+    with
+        _SDL_DestroyRenderer(&ren);
+    end
+
+
+
+
+class Ball with
+    var _SDL_Renderer& ren;
+    var _SDL_Rect r;
+    var int dt;
+do
+    // Inicializar Surface da Bola
+    var _SDL_Surface&? b_surface;
+        finalize
+            b_surface = _SDL_LoadBMP("basketball.bmp");
+        with
+            _SDL_FreeSurface(&b_surface);
+        end
+
+    // Inicializar Texture da Bola
+    var _SDL_Texture&? b_texture;
+        finalize
+            b_texture = _SDL_CreateTextureFromSurface(&ren, b_surface);
+        with
+            _SDL_DestroyTexture(&b_texture);
+        end
+
+    par do
+        loop do
+            par/or do
+                every (dt)ms do
+                    r.x = r.x + 1;
+                end
+            with
+                await (dt*560)ms;
+            end
+            par/or do
+                every (dt)ms do
+                    r.x = r.x - 1;
+                end
+            with
+                await (dt*560)ms;
+            end
+        end
+    with
+        every SDL_REDRAW do
+            _SDL_RenderCopy(&ren, b_texture, 0, &r);
+            //_SDL_SetRenderDrawColor(&ren, 0xFF, 0x00, 0x00, 0x00);
+            //_SDL_RenderFillRect(&ren, &r);
+        end
+    end
+end
+
+// Espera o usuário sair, ou executa o loop do jogo
+par/or do
+    await SDL_QUIT;
+with
+    loop do
+        par/or do // Reset
+            loop do
+                var _SDL_KeyboardEvent* key = await SDL_KEYDOWN;
+                if key:keysym.sym == _SDLK_r then
+                    break;
+                end
+            end
+        with // Limpar Background
+            every SDL_REDRAW do
+                _SDL_SetRenderDrawColor(&ren, 0xFF,0xFF,0xFF,0x00);
+                _SDL_RenderFillRect(&ren, &bg);
+            end
+        with // Criar Bola
+            pool Ball[1] b;
+            loop do
+                spawn Ball in b with
+                    this.ren = ren;
+                    this.r.x = 20;
+                    this.r.y = 50;
+                    this.r.w = 100;
+                    this.r.h = 100;
+                    this.dt = 3;
+                end;
+                await 1s;
+            end
+        with // Desenhar Tudo
+            every SDL_REDRAW do
+                _SDL_RenderPresent(&ren);
+            end
+        end
+    end
+end
+
+escape 0;
+
