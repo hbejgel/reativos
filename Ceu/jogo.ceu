@@ -26,6 +26,7 @@ var _SDL_Rect bg;
     bg.y = 0;
 
 
+
 // Inicializando Renderer
 var _SDL_Renderer&? ren;
     finalize
@@ -67,10 +68,16 @@ end
 class Ball with
     var _SDL_Renderer& ren;
     var _SDL_Rect r;
+    var _SDL_Rect score;
     var int x,y,w,h;
     var int dt;
     var int a;
 do
+
+    score.x = 400;
+    score.y = 400;
+    score.w = 50;
+    score.h = 50;
     // Inicializar Surface da Bola
     var _SDL_Surface&? b_surface;
         finalize
@@ -86,6 +93,18 @@ do
         with
             _SDL_DestroyTexture(&b_texture);
         end
+
+    var _SDL_Color scored_c;
+        scored_c.r = 0x00;
+        scored_c.g = 0xFF;
+        scored_c.b = 0x00;
+
+    var _SDL_Color not_scored_c;
+        not_scored_c.r = 0xFF;
+        not_scored_c.g = 0x00;
+        not_scored_c.b = 0x00;
+
+    var bool scored = true;
 
     par do
         loop do
@@ -118,6 +137,17 @@ do
                 r.y = r.y + a;
                 a = a + 1;
                 if r.y > 500 then
+                    if r.x > 45 and r.x < 90 then
+                        scored = true;
+                        if dt > 1 then
+                            dt = dt-1;
+                        end
+                    else
+                        scored = false;
+                        if dt < 3 then
+                            dt = dt + 1;
+                        end
+                    end
                     break;
                 end
             end
@@ -125,8 +155,12 @@ do
     with
         every SDL_REDRAW do
             _SDL_RenderCopy(&ren, b_texture, 0, &r);
-            //_SDL_SetRenderDrawColor(&ren, 0xFF, 0x00, 0x00, 0x00);
-            //_SDL_RenderFillRect(&ren, &r);
+            if scored then
+                _SDL_SetRenderDrawColor(&ren, scored_c.r, scored_c.g, scored_c.b, 0x00);
+            else
+                _SDL_SetRenderDrawColor(&ren, not_scored_c.r, not_scored_c.g, not_scored_c.b, 0x00);
+            end
+            _SDL_RenderFillRect(&ren, &score);
         end
     end
 end
