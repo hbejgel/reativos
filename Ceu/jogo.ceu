@@ -71,7 +71,6 @@ class Ball with
     var int dt;
     var int a;
 do
-    a = 1;
     // Inicializar Surface da Bola
     var _SDL_Surface&? b_surface;
         finalize
@@ -88,14 +87,13 @@ do
             _SDL_DestroyTexture(&b_texture);
         end
 
-    event int caiu;
-
     par do
         loop do
             r.x = x;
             r.y = y;
             r.w = w;
             r.h = h;
+            a = 1;
             par/or do
                 loop do
                     par/or do
@@ -116,17 +114,12 @@ do
             with
                 await SDL_MOUSEBUTTONDOWN;
             end
-            par/or do
-                every (7*dt)ms do
-                    r.y = r.y + a;
-                    a = a + 1;
-                    if r.y > 500 then
-                    // DUVIDA: Como emitir sinal de "bola caiu" e esperar por ele em um par/or?
-                        emit caiu;
-                    end
+            every (5*dt)ms do
+                r.y = r.y + a;
+                a = a + 1;
+                if r.y > 500 then
+                    break;
                 end
-            with
-                await caiu;
             end
         end
     with
