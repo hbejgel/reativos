@@ -34,14 +34,44 @@ var _SDL_Renderer&? ren;
         _SDL_DestroyRenderer(&ren);
     end
 
+class Cesta with
+    var _SDL_Renderer& ren;
+    var _SDL_Rect r;
+do
+    // Inicializar Surface da Cesta
+    var _SDL_Surface&? c_surface;
+        finalize
+            c_surface = _SDL_LoadBMP("cesta.bmp");
+        with
+            _SDL_FreeSurface(&c_surface);
+        end
 
+    // Inicializar Texture da Bola
+    var _SDL_Texture&? c_texture;
+        finalize
+            c_texture = _SDL_CreateTextureFromSurface(&ren, c_surface);
+        with
+            _SDL_DestroyTexture(&c_texture);
+        end
+
+    par do
+        await FOREVER;
+    with
+        every SDL_REDRAW do
+            _SDL_RenderCopy(&ren, c_texture, 0, &r);
+        end
+    end
+end
 
 
 class Ball with
     var _SDL_Renderer& ren;
     var _SDL_Rect r;
+    var int x,y,w,h;
     var int dt;
+    var int a;
 do
+    a = 1;
     // Inicializar Surface da Bola
     var _SDL_Surface&? b_surface;
         finalize
@@ -58,21 +88,45 @@ do
             _SDL_DestroyTexture(&b_texture);
         end
 
+    event int caiu;
+
     par do
         loop do
+            r.x = x;
+            r.y = y;
+            r.w = w;
+            r.h = h;
             par/or do
-                every (dt)ms do
-                    r.x = r.x + 1;
+                loop do
+                    par/or do
+                        every (dt)ms do
+                            r.x = r.x + 1;
+                        end
+                    with
+                        await (dt*520)ms;
+                    end
+                    par/or do
+                        every (dt)ms do
+                            r.x = r.x - 1;
+                        end
+                    with
+                        await (dt*520)ms;
+                    end
                 end
             with
-                await (dt*560)ms;
+                await SDL_MOUSEBUTTONDOWN;
             end
             par/or do
-                every (dt)ms do
-                    r.x = r.x - 1;
+                every (7*dt)ms do
+                    r.y = r.y + a;
+                    a = a + 1;
+                    if r.y > 500 then
+                    // DUVIDA: Como emitir sinal de "bola caiu" e esperar por ele em um par/or?
+                        emit caiu;
+                    end
                 end
             with
-                await (dt*560)ms;
+                await caiu;
             end
         end
     with
@@ -87,6 +141,8 @@ end
 // Espera o usuário sair, ou executa o loop do jogo
 par/or do
     await SDL_QUIT;
+    _IMG_Quit();
+    _SDL_Quit();
 with
     loop do
         par/or do // Reset
@@ -101,19 +157,23 @@ with
                 _SDL_SetRenderDrawColor(&ren, 0xFF,0xFF,0xFF,0x00);
                 _SDL_RenderFillRect(&ren, &bg);
             end
-        with // Criar Bola
-            pool Ball[1] b;
-            loop do
-                spawn Ball in b with
-                    this.ren = ren;
-                    this.r.x = 20;
-                    this.r.y = 50;
-                    this.r.w = 100;
-                    this.r.h = 100;
-                    this.dt = 3;
-                end;
-                await 1s;
-            end
+        with // Criar Bola e Cesta
+            var Ball b with
+                this.ren = ren;
+                this.x = 20;
+                this.y = 50;
+                this.w = 100;
+                this.h = 100;
+                this.dt = 3;
+            end;
+            var Cesta c with
+                this.ren = ren;
+                this.r.x = 0;
+                this.r.y = 420;
+                this.r.w = 200;
+                this.r.h = 100;
+            end;
+            await FOREVER;
         with // Desenhar Tudo
             every SDL_REDRAW do
                 _SDL_RenderPresent(&ren);
