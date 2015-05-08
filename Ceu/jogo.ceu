@@ -65,6 +65,42 @@ do
 end
 
 
+class Star with
+    var _SDL_Renderer& ren;
+    var _SDL_Rect r;
+    var int v;
+do
+    // Inicializar Surface da estrela
+    var _SDL_Surface&? s_surface;
+        finalize
+            s_surface = _SDL_LoadBMP("star.bmp");
+        with
+            _SDL_FreeSurface(&s_surface);
+        end
+
+    // Inicializar Texture da Bola
+    var _SDL_Texture&? s_texture;
+        finalize
+            s_texture = _SDL_CreateTextureFromSurface(&ren, s_surface);
+        with
+            _SDL_DestroyTexture(&s_texture);
+        end
+
+    par/or do
+        every (1000/v)ms do
+            r.x = r.x + 1;
+            if r.x > 600 then
+                break;
+            end
+        end
+    with
+        every SDL_REDRAW do
+            _SDL_RenderCopy(&ren, s_texture, 0, &r);
+        end
+    end
+end
+
+
 class Ball with
     var _SDL_Renderer& ren;
     var _SDL_Rect r;
@@ -184,7 +220,7 @@ with
                 _SDL_SetRenderDrawColor(&ren, 0xFF,0xFF,0xFF,0x00);
                 _SDL_RenderFillRect(&ren, &bg);
             end
-        with // Criar Bola e Cesta
+        with // Criar Bola e Cesta, Loop das estrelas
             var Ball b with
                 this.ren = ren;
                 this.x = 20;
@@ -200,7 +236,17 @@ with
                 this.r.w = 200;
                 this.r.h = 100;
             end;
-            await FOREVER;
+            pool Star[10] s;
+            every 250ms do
+                    spawn Star in s with
+                        this.ren    = ren;
+                        this.r.x = 50;
+                        this.r.y = 20 + _rand()%500;
+                        this.r.w = 50;
+                        this.r.h = 50;
+                        this.v      = 200 + _rand()%200;
+                    end;
+            end
         with // Desenhar Tudo
             every SDL_REDRAW do
                 _SDL_RenderPresent(&ren);
