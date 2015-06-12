@@ -1,0 +1,96 @@
+#include "/home/terra/TerraNet_v0.1/terra/TerraNet.defs"
+var ushort nodeId = getNodeId();
+var ushort group = 0;
+
+if ((nodeId/10)%2) == ((nodeId%10)%2) then
+	group = 1;
+end
+
+var ushort target;
+var ushort temp;
+var ubyte stat;
+var ubyte qsize;
+var ubyte tries;
+pktype usrMsg from radioMsg with
+	var ubyte[4] d8;
+	var ushort[4] d16;
+	var ulong[2] d32;
+end
+
+var usrMsg msg;
+var usrMsg rcv;
+var usrMsg snd;
+var ushort cnt;
+var ubyte ack;
+cnt = 0;
+
+if nodeId == 11 then
+	target = 1;
+	msg.target = BROADCAST;
+	msg.source = 11;
+	emit SEND(msg);
+	await SEND_DONE;
+else
+	rcv = await RECEIVE;
+	target = rcv.source;
+	msg.target = BROADCAST;
+	msg.source = nodeId;
+	emit SEND(msg);
+	await SEND_DONE;
+end	
+
+
+await 10s;
+await (nodeId * 3)ms;
+msg.source = nodeId;
+msg.target = target;	
+par do
+	loop do
+		if group == 1 then
+			emit REQ_TEMP();
+			temp = await TEMP;
+			msg.d16[0] = temp;
+			msg.d16[1] = cnt;
+			cnt = cnt + 1;
+			stat = qPut(msg);
+		end
+		await 10s;
+		group = (group+1)%2;
+	end
+with
+	loop do
+		rcv = await RECEIVE;
+
+		rcv.target = target;
+		stat = qPut(rcv);
+	end	
+with
+	loop do
+		await Q_READY;
+		loop do
+			await (nodeId +(nodeId%10)*10 + (random()%100))ms;
+			qsize = qSize();
+			if qsize == 0 then
+				break;
+			end
+			stat = qGet(snd);
+
+			ack = FALSE;
+			tries = 0;
+			loop do
+				if tries > 5 then
+					break;
+				else/if ack == FALSE then
+					emit SEND_ACK(snd);
+					ack = await SEND_DONE_ACK;
+					tries = tries+1;
+					await (random()%100 + nodeId)ms;
+				else
+					break;
+				end
+			end
+		end
+	end
+end
+
+
