@@ -3,252 +3,229 @@
 input void SDL_REDRAW;
 input void SDL_QUIT;
 input _SDL_KeyboardEvent*    SDL_KEYDOWN;
-input _SDL_MouseButtonEvent* SDL_MOUSEBUTTONDOWN;
 
+var int win_w;
+var int win_h;
 var _SDL_Window&? win;
-	finalize
-        win = _SDL_CreateWindow("Basquete", _SDL_WINDOWPOS_CENTERED,
-                                         _SDL_WINDOWPOS_CENTERED,
-                                         640, 480,
-                                         _SDL_WINDOW_SHOWN);
+    finalize
+        win = _SDL_CreateWindow("Jogo - Raphael Sampaio", _SDL_WINDOWPOS_CENTERED, _SDL_WINDOWPOS_CENTERED, 640, 480, _SDL_WINDOW_SHOWN);
     with
         _SDL_DestroyWindow(&win);
-	end
+    end
 
-// Retangulo que representa o background
-var int w, h;
-_SDL_GetWindowSize(&win, &w, &h);
+_SDL_GetWindowSize(win, &win_w, &win_h);
 
-var _SDL_Rect bg;
-    bg.w = w;
-    bg.h = h;
-    bg.x = 0;
-    bg.y = 0;
-
-
-
-// Inicializando Renderer
 var _SDL_Renderer&? ren;
     finalize
-        ren = _SDL_CreateRenderer(&win, -1, 0);
+        ren = _SDL_CreateRenderer(win, -1, 0);
     with
         _SDL_DestroyRenderer(&ren);
     end
 
-class Cesta with
-    var _SDL_Renderer& ren;
-    var _SDL_Rect r;
+var _SDL_Rect bg;
+    bg.w = win_w;
+    bg.h = win_h;
+    bg.x = 0;
+    bg.y = 0;
+
+var _SDL_Color bg_clr;
+    bg_clr.r = 0x00;
+    bg_clr.g = 0x00;
+    bg_clr.b = 0x00;
+
+class Brick with
+    var _SDL_Rect rct;
+    var int dt;
+    var bool alive;    
+
+    var _SDL_Renderer&  ren;
 do
-    // Inicializar Surface da Cesta
-    var _SDL_Surface&? c_surface;
-        finalize
-            c_surface = _SDL_LoadBMP("cesta.bmp");
-        with
-            _SDL_FreeSurface(&c_surface);
-        end
+    this.rct.w = 63;
+    this.rct.h = 63;
+    this.alive = true;
 
-    // Inicializar Texture da Bola
-    var _SDL_Texture&? c_texture;
-        finalize
-            c_texture = _SDL_CreateTextureFromSurface(&ren, c_surface);
-        with
-            _SDL_DestroyTexture(&c_texture);
-        end
-
-    par do
-        await FOREVER;
-    with
-        every SDL_REDRAW do
-            _SDL_RenderCopy(&ren, c_texture, 0, &r);
-        end
-    end
-end
-
-
-class Star with
-    var _SDL_Renderer& ren;
-    var _SDL_Rect r;
-    var int v;
-do
-    // Inicializar Surface da estrela
-    var _SDL_Surface&? s_surface;
-        finalize
-            s_surface = _SDL_LoadBMP("star.bmp");
-        with
-            _SDL_FreeSurface(&s_surface);
-        end
-
-    // Inicializar Texture da Bola
-    var _SDL_Texture&? s_texture;
-        finalize
-            s_texture = _SDL_CreateTextureFromSurface(&ren, s_surface);
-        with
-            _SDL_DestroyTexture(&s_texture);
-        end
+    var _SDL_Color clr;
+        clr.r = 0xFF;
+        clr.g = 0xFF;
+        clr.b = 0xFF;
 
     par/or do
-        every (1000/v)ms do
-            r.x = r.x + 1;
-            if r.x > 600 then
+        loop do
+            await (this.dt) ms;
+            rct.x = rct.x + 1;
+            if rct.x > 704 then
+                rct.x = -64;
+            end
+            if not alive then
                 break;
             end
         end
     with
-        every SDL_REDRAW do
-            _SDL_RenderCopy(&ren, s_texture, 0, &r);
+        loop do
+            await SDL_REDRAW;
+            _SDL_SetRenderDrawColor(&ren, clr.r, clr.g, clr.b, 0xFF);
+            _SDL_RenderFillRect(&ren, &rct);
         end
     end
 end
 
-
-class Ball with
-    var _SDL_Renderer& ren;
-    var _SDL_Rect r;
-    var _SDL_Rect score;
-    var int x,y,w,h;
+class Shot with
+    var _SDL_Rect rct;
     var int dt;
-    var int a;
+    var bool alive;
+
+    var _SDL_Renderer&  ren;
 do
+    this.rct.w = 25;
+    this.rct.h = 25;
+    this.alive = true;
 
-    score.x = 400;
-    score.y = 400;
-    score.w = 50;
-    score.h = 50;
-    // Inicializar Surface da Bola
-    var _SDL_Surface&? b_surface;
-        finalize
-            b_surface = _SDL_LoadBMP("basketball.bmp");
-        with
-            _SDL_FreeSurface(&b_surface);
-        end
+    var _SDL_Color clr;
+        clr.r = 0xFF;
+        clr.g = 0xFF;
+        clr.b = 0xFF;
 
-    // Inicializar Texture da Bola
-    var _SDL_Texture&? b_texture;
-        finalize
-            b_texture = _SDL_CreateTextureFromSurface(&ren, b_surface);
-        with
-            _SDL_DestroyTexture(&b_texture);
-        end
-
-    var _SDL_Color scored_c;
-        scored_c.r = 0x00;
-        scored_c.g = 0xFF;
-        scored_c.b = 0x00;
-
-    var _SDL_Color not_scored_c;
-        not_scored_c.r = 0xFF;
-        not_scored_c.g = 0x00;
-        not_scored_c.b = 0x00;
-
-    var bool scored = true;
-
-    par do
+    par/or do
         loop do
-            r.x = x;
-            r.y = y;
-            r.w = w;
-            r.h = h;
-            a = 1;
-            par/or do
-                loop do
-                    par/or do
-                        every (dt)ms do
-                            r.x = r.x + 1;
-                        end
-                    with
-                        await (dt*520)ms;
-                    end
-                    par/or do
-                        every (dt)ms do
-                            r.x = r.x - 1;
-                        end
-                    with
-                        await (dt*520)ms;
-                    end
-                end
-            with
-                await SDL_MOUSEBUTTONDOWN;
+            await (this.dt) ms;
+            rct.y = rct.y - 10;
+            if rct.y < 0 then
+                alive = false;
             end
-            every (5*dt)ms do
-                r.y = r.y + a;
-                a = a + 1;
-                if r.y > 500 then
-                    if r.x > 45 and r.x < 90 then
-                        scored = true;
-                        if dt > 1 then
-                            dt = dt-1;
-                        end
-                    else
-                        scored = false;
-                        if dt < 3 then
-                            dt = dt + 1;
-                        end
-                    end
-                    break;
-                end
+            if not alive then
+                break;
             end
         end
     with
-        every SDL_REDRAW do
-            _SDL_RenderCopy(&ren, b_texture, 0, &r);
-            if scored then
-                _SDL_SetRenderDrawColor(&ren, scored_c.r, scored_c.g, scored_c.b, 0x00);
-            else
-                _SDL_SetRenderDrawColor(&ren, not_scored_c.r, not_scored_c.g, not_scored_c.b, 0x00);
-            end
-            _SDL_RenderFillRect(&ren, &score);
+        loop do
+            await SDL_REDRAW;
+            _SDL_SetRenderDrawColor(&ren, clr.r, clr.g, clr.b, 0xFF);
+            _SDL_RenderFillRect(&ren, &rct);
         end
     end
 end
 
-// Espera o usuário sair, ou executa o loop do jogo
+class Player with
+    var _SDL_Rect rct;
+    var int dt;
+    var bool right;
+    var bool left;
+    pool Shot[] shots;
+    pool Brick[] bricks;
+
+    var _SDL_Renderer& ren;
+do
+    this.rct.w = 64;
+    this.rct.h = 64;
+    this.right = false;
+    this.left = false;
+
+    loop j in 2 do
+        loop i in 12 do
+            spawn Brick in bricks with
+                this.dt = 20;
+                this.rct.x = i * 64;
+                this.rct.y = j * 64;
+                this.ren = ren;
+            end;
+        end
+    end
+
+    var _SDL_Color clr;
+        clr.r = 0xFF;
+        clr.g = 0xFF;
+        clr.b = 0xFF;
+
+    par/or do
+        loop do
+            await (this.dt) ms;
+            if right then
+                rct.x = rct.x + 15;
+                right = false;
+            end
+           if left then
+                rct.x = rct.x - 15;
+                left = false;
+            end
+        end
+    with
+        loop do
+            loop (Shot *)s in shots do
+                if s:alive then
+                    loop (Brick *)b in bricks do
+                        if b:alive then
+                            if _SDL_HasIntersection(&s:rct, &b:rct) then
+                                s:alive = false;
+                                b:alive = false;
+                            end
+                        end
+                    end
+                end
+            end
+            await 1ms;
+        end
+
+    with
+        loop do
+            await SDL_REDRAW;
+            _SDL_SetRenderDrawColor(&ren, clr.r, clr.g, clr.b, 0xFF);
+            _SDL_RenderFillRect(&ren, &rct);
+        end
+    with
+        loop do
+            var _SDL_KeyboardEvent* key = await SDL_KEYDOWN;
+            if key:keysym.sym == _SDLK_LEFT then
+                this.left = true;
+            end
+            if key:keysym.sym == _SDLK_RIGHT then
+                this.right = true;
+            end                         
+        end
+    with
+        loop do
+            var _SDL_KeyboardEvent* key = await SDL_KEYDOWN;
+            if key:keysym.sym == _SDLK_UP then
+                spawn Shot in shots with
+                    this.dt = 10;
+                    this.rct.x = rct.x + (32 - 12);
+                    this.rct.y = rct.y;
+                    this.ren = ren;
+                end;
+            await 500 ms;    
+            end              
+        end        
+    end
+end
+
 par/or do
     await SDL_QUIT;
-    _IMG_Quit();
-    _SDL_Quit();
 with
     loop do
-        par/or do // Reset
+        par/or do
             loop do
                 var _SDL_KeyboardEvent* key = await SDL_KEYDOWN;
                 if key:keysym.sym == _SDLK_r then
                     break;
-                end
+                end            
             end
-        with // Limpar Background
-            every SDL_REDRAW do
-                _SDL_SetRenderDrawColor(&ren, 0xFF,0xFF,0xFF,0x00);
+        with
+            loop do
+                await SDL_REDRAW;
+                _SDL_SetRenderDrawColor(&ren, bg_clr.r, bg_clr.g, bg_clr.b, 0xFF);
                 _SDL_RenderFillRect(&ren, &bg);
             end
-        with // Criar Bola e Cesta, Loop das estrelas
-            var Ball b with
+        with
+            var Player player with
+                this.rct.x = 320 - 32;
+                this.rct.y = 480 - 64;
                 this.ren = ren;
-                this.x = 20;
-                this.y = 50;
-                this.w = 100;
-                this.h = 100;
-                this.dt = 3;
+                this.dt = 10;
             end;
-            var Cesta c with
-                this.ren = ren;
-                this.r.x = 0;
-                this.r.y = 420;
-                this.r.w = 200;
-                this.r.h = 100;
-            end;
-            pool Star[10] s;
-            every 250ms do
-                    spawn Star in s with
-                        this.ren    = ren;
-                        this.r.x = 50;
-                        this.r.y = 20 + _rand()%500;
-                        this.r.w = 50;
-                        this.r.h = 50;
-                        this.v      = 200 + _rand()%200;
-                    end;
-            end
-        with // Desenhar Tudo
-            every SDL_REDRAW do
+
+            await FOREVER;
+        with
+            loop do
+                await SDL_REDRAW;
                 _SDL_RenderPresent(&ren);
             end
         end
@@ -256,4 +233,3 @@ with
 end
 
 escape 0;
-

@@ -1,0 +1,21 @@
+RSSF - Rede de Sensores sem Fio (RSSF)
+
+Sensores + Microcontroladores
+
+Minimo de CPU, RAM e Rádio
+Baixo Consumo, 1 par de baterias opera por meses ou anos
+
+Aplicações: Internet das coisas, espacos inteligentes, cidades inteligentes
+
+Automacao predial e residencial, monitoracao ambiental, monitoracao medica...
+
+
+Comunicacao - Controladores cuidam da propria comunicacao
+
+split-phase - comando/reacao
+
+task void xxx(){...}    -> Definir a task
+ 
+....; post xxx(); ....;  -> Chamar a task
+
+Interupcao de hardware
