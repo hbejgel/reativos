@@ -1,3 +1,8 @@
+/* Grupo:
+	Henrique Bejgel
+	Raphael Sampaio
+*/
+
 #include "/home/terra/TerraNet_v0.1/terra/TerraNet.defs"
 var ushort nodeId = getNodeId();
 var ushort group = 0;
